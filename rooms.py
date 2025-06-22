@@ -27,7 +27,7 @@ class Rooms():
             return False
         
     #Return list of 2 players if the user joined the room, otherwise None
-    def join(self, room_id, user_id) -> bool:
+    def join(self, room_id, user_id) -> list[int] | None:
         if room_id in self.rooms:
             if user_id != self.rooms[room_id]:
                 host = self.rooms[room_id]
