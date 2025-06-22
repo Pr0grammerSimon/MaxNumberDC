@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+import json
 
 
 class Rooms():
@@ -55,11 +56,50 @@ class RoomsCog(commands.Cog):
 
     @room.command(name="create", description="Create a room with some name")
     async def create_room(self, interaction: discord.Interaction, room_name : str):
+        with open("rooms.json", "r") as f:
+            obj = json.load(f)
+        rooms = obj["rooms"]
+
+        if any(map(lambda x: x["name"] == room_name, rooms)):
+            await interaction.response.send_message(f"Room with name {room_name} already exists!")
+
+        rooms.append({
+            "name": room_name,
+            "created_by": interaction.user.id
+        })
+        
+        with open("rooms.json", "w") as f:
+            json.dump(obj, f)
+
         await interaction.response.send_message(f"Room with name {room_name} created!")
+
+
 
     @room.command(name="delete", description="Delete a room with some name")
     async def create_room(self, interaction: discord.Interaction, room_name : str):
+        with open("rooms.json", "r") as f:
+            obj = json.load(f)
+        rooms: list = obj["rooms"]
+
+        deleted_room = None
+        for room in rooms:
+            if room["name"] == room_name:
+                if room["created_by"] != interaction.user.id:
+                    await interaction.response.send_message(f"Romm with name {room_name} isn't yours!")
+                    return
+                deleted_room = room
+                break
+
+        if deleted_room is None:
+            await interaction.response.send_message(f"Room with name {room_name} doesn't exist!")
+            return
+        
+        rooms.remove(deleted_room)
+
+        with open("rooms.json", "w") as f:
+            json.dump(obj, f)
         await interaction.response.send_message(f"Room with name {room_name} deleted!")
+
 
     @room.command(name="join", description="Join a room with some name")
     async def create_room(self, interaction: discord.Interaction, room_name : str):
@@ -67,7 +107,13 @@ class RoomsCog(commands.Cog):
 
     @room.command(name="list", description="List the current rooms")
     async def create_room(self, interaction: discord.Interaction):
-        await interaction.response.send_message(f"TODO !")
+        with open("rooms.json", "r") as f:
+            obj = json.load(f)
+        rooms: list = obj["rooms"]
+
+        embed = discord.Embed(title = "The list of rooms", description="\n".join(map(lambda x: x["name"], rooms)))
+
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(bot):
