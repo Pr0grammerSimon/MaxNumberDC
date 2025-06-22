@@ -65,6 +65,10 @@ class RoomsCog(commands.Cog):
     async def create_room(self, interaction: discord.Interaction, room_name : str):
         await interaction.response.send_message(f"Joined to room with name {room_name} !")
 
+    @room.command(name="list", description="List the current rooms")
+    async def create_room(self, interaction: discord.Interaction):
+        await interaction.response.send_message(f"TODO !")
+
 
 async def setup(bot):
     await bot.add_cog(RoomsCog(bot))
