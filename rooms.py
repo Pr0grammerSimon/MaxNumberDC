@@ -61,7 +61,7 @@ class RoomsCog(commands.Cog):
         rooms = obj["rooms"]
 
         if any(map(lambda x: x["name"] == room_name, rooms)):
-            await interaction.response.send_message(f"Room with name {room_name} already exists!")
+            await interaction.response.send_message(f"Room with name `{room_name}` already exists!")
 
         rooms.append({
             "name": room_name,
@@ -71,7 +71,7 @@ class RoomsCog(commands.Cog):
         with open("rooms.json", "w") as f:
             json.dump(obj, f)
 
-        await interaction.response.send_message(f"Room with name {room_name} created!")
+        await interaction.response.send_message(f"Room with name `{room_name}` created!")
 
 
 
@@ -85,25 +85,25 @@ class RoomsCog(commands.Cog):
         for room in rooms:
             if room["name"] == room_name:
                 if room["created_by"] != interaction.user.id:
-                    await interaction.response.send_message(f"Romm with name {room_name} isn't yours!")
+                    await interaction.response.send_message(f"Romm with name `{room_name}` isn't yours!")
                     return
                 deleted_room = room
                 break
 
         if deleted_room is None:
-            await interaction.response.send_message(f"Room with name {room_name} doesn't exist!")
+            await interaction.response.send_message(f"Room with name `{room_name}` doesn't exist!")
             return
         
         rooms.remove(deleted_room)
 
         with open("rooms.json", "w") as f:
             json.dump(obj, f)
-        await interaction.response.send_message(f"Room with name {room_name} deleted!")
+        await interaction.response.send_message(f"Room with name `{room_name}` deleted!")
 
 
     @room.command(name="join", description="Join a room with some name")
     async def create_room(self, interaction: discord.Interaction, room_name : str):
-        await interaction.response.send_message(f"Joined to room with name {room_name} !")
+        await interaction.response.send_message(f"Joined to room with name `{room_name}` !")
 
     @room.command(name="list", description="List the current rooms")
     async def create_room(self, interaction: discord.Interaction):
