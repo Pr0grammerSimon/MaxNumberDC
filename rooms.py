@@ -81,7 +81,6 @@ class RoomsCog(commands.Cog):
 
     @room.command(name="delete", description="Delete a room with some name")
     async def delete_room(self, interaction: discord.Interaction, room_name : str):
-    async def delete_room(self, interaction: discord.Interaction, room_name : str):
         with open("rooms.json", "r") as f:
             obj = json.load(f)
         rooms: list = obj["rooms"]
@@ -127,7 +126,6 @@ class RoomsCog(commands.Cog):
         await interaction.response.send_message(f"No room with name `{room_name}`")
 
     @room.command(name="list", description="List the current rooms")
-    async def list_rooms(self, interaction: discord.Interaction):
     async def list_rooms(self, interaction: discord.Interaction):
         with open("rooms.json", "r") as f:
             obj = json.load(f)
