@@ -106,24 +106,27 @@ class RoomsCog(commands.Cog):
 
 
     @room.command(name="join", description="Join a room with some name")
-    async def create_room(self, interaction: discord.Interaction, room_name : str):
+    async def join_room(self, interaction: discord.Interaction, room_name : str):
 
         # TODO
         with open("rooms.json", "r") as f:
             obj = json.load(f)
         rooms = obj["rooms"]
 
+        
+        matches = list(map(lambda x: x["name"] == room_name, rooms))
+        if any(matches):
+            index = matches.index(True)
 
-        if any( mapped := map(lambda x: x["name"] == room_name, rooms)):
-            index = list(mapped).index(True)
-
-            if rooms[index]["created_by"] == interaction.user.id:
+            if rooms[index]["created_by"] == interaction.user.id: 
                 await interaction.response.send_message(f"You can't join to your own room!")
                 return
-
-            Game(player_1=rooms[index]["created_by"], player_2=interaction.user.id, channel = interaction.channel).start()
+            
             await interaction.response.send_message(f"Joined to room with name `{room_name}` !")
-        await interaction.response.send_message(f"No room with name `{room_name}`")
+            await Game(player1=rooms[index]["created_by"], player2=interaction.user.id, channel1 = interaction.channel, channel2 = interaction.channel).start()
+        else:
+            await interaction.response.send_message(f"No room with name `{room_name}`")
+
 
     @room.command(name="list", description="List the current rooms")
     async def list_rooms(self, interaction: discord.Interaction):
