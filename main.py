@@ -2,7 +2,11 @@ import asyncio
 import discord
 from discord.ext import commands
 import logging
-from config import TOKEN
+import dotenv
+import os
+
+### .ENV TOKEN ###
+dotenv.load_dotenv('.env')
 
 ### LOGI ###
 logging.basicConfig(level=logging.INFO)  # albo DEBUG
@@ -33,7 +37,7 @@ async def on_ready():
 async def main():
     async with bot:
         await bot.load_extension("rooms")
-        await bot.start(TOKEN)
+        await bot.start(os.getenv("TOKEN"))
 
 
 

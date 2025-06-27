@@ -4,7 +4,6 @@ import json
 
 from game import Game
 
-from game import Game
 
 
 class Rooms():
@@ -69,8 +68,11 @@ class RoomsCog(commands.Cog):
 
         rooms.append({
             "name": room_name,
-            "created_by": interaction.user.id
+            "created_by": interaction.user.id,
+            "channel1": interaction
         })
+
+        
         
         with open("rooms.json", "w") as f:
             json.dump(obj, f)
