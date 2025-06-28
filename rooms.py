@@ -48,7 +48,6 @@ class RoomsCog(commands.Cog):
 
     def __init__(self, bot):
         self.bot = bot
-        self.rooms = Rooms()
     
     @discord.app_commands.command(name="test", description="test")
     async def test(self, interaction: discord.Interaction):
@@ -65,11 +64,12 @@ class RoomsCog(commands.Cog):
 
         if any(map(lambda x: x["name"] == room_name, rooms)):
             await interaction.response.send_message(f"Room with name `{room_name}` already exists!")
+            return
 
         rooms.append({
             "name": room_name,
             "created_by": interaction.user.id,
-            "channel1": interaction
+            "channel1": interaction.channel_id
         })
 
         
@@ -109,11 +109,9 @@ class RoomsCog(commands.Cog):
 
     @room.command(name="join", description="Join a room with some name")
     async def join_room(self, interaction: discord.Interaction, room_name : str):
-
-        # TODO
         with open("rooms.json", "r") as f:
             obj = json.load(f)
-        rooms = obj["rooms"]
+        rooms: list = obj["rooms"]
 
         
         matches = list(map(lambda x: x["name"] == room_name, rooms))
@@ -124,8 +122,27 @@ class RoomsCog(commands.Cog):
                 await interaction.response.send_message(f"You can't join to your own room!")
                 return
             
+            first_channel = self.bot.get_channel(rooms[index]["channel1"])
+
+            if first_channel == None:
+                await interaction.response.send_message(f"Couldn't join to room with name `{room_name}`")
+                return
+            
+
             await interaction.response.send_message(f"Joined to room with name `{room_name}` !")
-            await Game(player1=rooms[index]["created_by"], player2=interaction.user.id, channel1 = interaction.channel, channel2 = interaction.channel).start()
+
+            game =  Game(
+                player1=rooms[index]["created_by"], 
+                player2=interaction.user.id, 
+                channel1 = first_channel, 
+                channel2 = interaction.channel)
+            
+            rooms.pop(index)
+
+            with open("rooms.json", "w") as f:
+                json.dump(obj, f)
+
+            await game.start()
         else:
             await interaction.response.send_message(f"No room with name `{room_name}`")
 

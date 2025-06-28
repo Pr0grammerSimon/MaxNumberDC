@@ -54,13 +54,12 @@ class Game:
 
         else:
             cards_embed1 = await self.cards_embed()
-            cards_embed2 = await self.cards_embed(self.player2_id)
 
             view1 = PlayerChoiceView(self)
             view2 = PlayerChoiceView(self)
 
             self.messages = [await self.channel1.send(embed=cards_embed1, view=view1), 
-                             await self.channel2.send(embed=cards_embed2, view=view2)]
+                             await self.channel2.send(embed=cards_embed1, view=view2)]
 
 
     
@@ -99,7 +98,7 @@ class Game:
             return False
         
         if user_id != self.current_turn:
-            await interaction.response.send_message("Is not your turn!", ephemeral=True)
+            await interaction.response.send_message("It is not your turn!", ephemeral=True)
             return False
 
         return True
