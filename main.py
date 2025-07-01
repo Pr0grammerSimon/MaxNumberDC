@@ -5,6 +5,9 @@ import logging
 import dotenv
 import os
 
+from game import PosChoiceView, CardChoiceView, PlayerChoiceView
+import game
+
 ### .ENV TOKEN ###
 dotenv.load_dotenv('.env')
 
@@ -26,7 +29,10 @@ bot = commands.Bot(command_prefix="/", intents=intents)
 @bot.event
 async def on_ready():
     print(f"Bot działa jako {bot.user}")
-
+    # g = game.Game(None, None, None, None)
+    # bot.add_view(PosChoiceView(g))
+    # bot.add_view(CardChoiceView(g))
+    # bot.add_view(PlayerChoiceView(g))
     try:
         synced = await bot.tree.sync()
         print("Slash commends zsynchronizowane!", len(synced))
@@ -36,6 +42,7 @@ async def on_ready():
 
 async def main():
     async with bot:
+        
         await bot.load_extension("rooms")
         await bot.start(os.getenv("TOKEN"))
 

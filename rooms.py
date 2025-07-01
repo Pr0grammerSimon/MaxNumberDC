@@ -5,45 +5,6 @@ import json
 from game import Game
 
 
-
-class Rooms():
-
-    def __init__(self) :
-        self.rooms = {}
-    
-    #Return True if room was added, otherwise False
-    def add(self, room_id, host_id) -> bool:
-        if room_id in self.rooms:
-            return False
-        else:
-            self.rooms[room_id] = host_id
-            return True
-
-    #Return True if room was deleted, otherwise False
-    def delete(self, room_id, user_id) -> bool:
-        if room_id in self.rooms:
-            if self.rooms[room_id] == user_id:
-                self.rooms.pop(room_id)
-                return True
-            else:
-                return False
-        else:
-            return False
-        
-    #Return list of 2 players if the user joined the room, otherwise None
-    def join(self, room_id, user_id) -> list[str] | None:
-        if room_id in self.rooms:
-            if user_id != self.rooms[room_id]:
-                host = self.rooms[room_id]
-                self.rooms.pop(room_id)
-                return [host, user_id]
-            else:
-                return None
-        else:
-            return None
-        
-
-
 class RoomsCog(commands.Cog):
 
     def __init__(self, bot):
@@ -57,6 +18,7 @@ class RoomsCog(commands.Cog):
     room = discord.app_commands.Group(name="room", description="Room commands")
 
     @room.command(name="create", description="Create a room with some name")
+    @discord.app_commands.describe(room_name="The name of the room to create")
     async def create_room(self, interaction: discord.Interaction, room_name : str):
         with open("rooms.json", "r") as f:
             obj = json.load(f)
@@ -82,6 +44,7 @@ class RoomsCog(commands.Cog):
 
 
     @room.command(name="delete", description="Delete a room with some name")
+    @discord.app_commands.describe(room_name="The name of the room to delete")
     async def delete_room(self, interaction: discord.Interaction, room_name : str):
         with open("rooms.json", "r") as f:
             obj = json.load(f)
@@ -108,7 +71,8 @@ class RoomsCog(commands.Cog):
 
 
     @room.command(name="join", description="Join a room with some name")
-    async def join_room(self, interaction: discord.Interaction, room_name : str):
+    @discord.app_commands.describe(room_name="The name of the room to join to")
+    async def join_room(self, interaction: discord.Interaction, room_name: str):
         with open("rooms.json", "r") as f:
             obj = json.load(f)
         rooms: list = obj["rooms"]
@@ -152,8 +116,16 @@ class RoomsCog(commands.Cog):
         with open("rooms.json", "r") as f:
             obj = json.load(f)
         rooms: list = obj["rooms"]
+        # print(enumerate(rooms))
+        if len(rooms) == 0:
+            await interaction.response.send_message('There are no rooms!')
+            return
 
-        embed = discord.Embed(title = "The list of rooms", description="\n".join(map(lambda x: x["name"], rooms)))
+        embed = discord.Embed(title = "The list of rooms", 
+                              description="\n".join(
+                                  map(lambda x: f"{x[0]}. {x[1]["name"]}", 
+                                      list(enumerate(rooms))))
+                              , colour= discord.Color.blue())
 
         await interaction.response.send_message(embed=embed)
 

@@ -2,6 +2,8 @@ from curses import color_content
 import random
 from re import L
 
+import logging
+
 import discord
 
 
@@ -38,13 +40,33 @@ class Game:
         self.choice_texts = ["Pick a player", "Pick a card", "Pick a position to give a card"]
         self.choice_nr = 0
 
-    async def setup_players(self):
-        self.player1 = await self.channel1.guild.fetch_member(self.player1_id)
-        self.player2 = await self.channel2.guild.fetch_member(self.player2_id)
+    async def setup_players(self) -> bool:
+        try:
+            guild1 = self.channel1.guild
+            guild2 = self.channel2.guild
+
+            self.player1 = guild1.get_member(self.player1_id) or await guild1.fetch_member(self.player1_id)
+            self.player2 = guild2.get_member(self.player2_id) or await guild2.fetch_member(self.player2_id)
+
+            if not self.player1 or not self.player2:
+                return False
+            return True
+        except discord.NotFound as e:
+            logging.error(f"Player not found: {e}")
+            return False
+        except Exception as e:
+            logging.error(f"Unexpected error in setup_players: {e}")
+            return False
 
     
     async def start(self):
-        await self.setup_players()
+        if not await self.setup_players():
+            if self.channel1.id == self.channel2.id:
+                await self.channel1.send("Couldn't find the player")
+            else :
+                await self.channel2.send("Couldn't find the player")
+                await self.channel1.send("Couldn't find the player")
+
 
         if self.channel1.id == self.channel2.id:
             cards_embed = await self.cards_embed()
@@ -115,7 +137,7 @@ class Game:
             if new_expr[idx] in OPERATION_CARDS and new_expr[idx + 1] in OPERATION_CARDS:
                 return False
 
-        if new_expr[0] == "/" or new_expr[0] == "*":
+        if new_expr[0] == "/" or new_expr[0] == "*" or new_expr[0] == "**":
             return False
         
         if new_expr[-1] in OPERATION_CARDS:
@@ -183,6 +205,8 @@ class PlayerChoiceView(discord.ui.View):
         super().__init__()
         self.game : Game = game
         game.choice_nr = 0
+        self.timeout = None
+        # self.
 
         self.add_item(PlayerChoiceButton(game.player1, game))
         self.add_item(PlayerChoiceButton(game.player2, game))
@@ -215,6 +239,7 @@ class CardChoiceView(discord.ui.View):
         super().__init__()
         self.game = game
         game.choice_nr = 1
+        self.timeout = None
         
         for card in self.game.available:
             self.add_item(CardChoiceButton(card, game))
@@ -245,6 +270,7 @@ class PosChoiceView(discord.ui.View):
     def __init__(self, game : Game):
         super().__init__()
         self.game = game
+        self.timeout = None
         
         for idx in range(len(game.cards[game.player_choice]) + 1):
             self.add_item(PosChoiceButton(idx, game))
