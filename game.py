@@ -329,5 +329,5 @@ class PosChoiceButton(discord.ui.Button):
             for idx in range(len(self.game.messages)):
                 cards_embed = await self.game.cards_embed()
                 view = PlayerChoiceView(self.game)
-                await self.game.messages[idx].channel.send(view = view, embed = cards_embed)
-                await self.game.messages[idx].delete()
+                await self.game.messages[idx].delete(delay=5)
+                self.game.messages[idx] = await self.game.messages[idx].channel.send(view = view, embed = cards_embed)
