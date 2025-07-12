@@ -123,7 +123,7 @@ class RoomsCog(commands.Cog):
 
         embed = discord.Embed(title = "The list of rooms", 
                               description="\n".join(
-                                  map(lambda x: f"{x[0]}. {x[1]["name"]}", 
+                                  map(lambda x: f"{x[0]}. {x[1]['name']}", 
                                       list(enumerate(rooms))))
                               , colour= discord.Color.blue())
 
