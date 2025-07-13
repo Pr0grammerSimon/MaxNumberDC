@@ -1,9 +1,5 @@
-from curses import color_content
 import random
-from re import L
-
 import logging
-
 import discord
 
 
@@ -137,7 +133,7 @@ class Game:
             if new_expr[idx] in OPERATION_CARDS and new_expr[idx + 1] in OPERATION_CARDS:
                 return False
 
-        if new_expr[0] == "/" or new_expr[0] == "*" or new_expr[0] == "**":
+        if new_expr[0] == "/" or new_expr[0] == "*":
             return False
         
         if new_expr[-1] in OPERATION_CARDS:
@@ -153,6 +149,9 @@ class Game:
         score1 = eval("".join([str(element) for element in self.cards[player1]]))
         score2 = eval("".join([str(element) for element in self.cards[player2]]))
 
+        score1_rounded = f"{score1:.3f}"
+        score2_rounded = f"{score2:.3f}"
+
         result = "DRAW!"
 
         if score1 > score2:
@@ -164,8 +163,8 @@ class Game:
                             description=result,
                             color=discord.Color.blue())
         
-        embed.add_field(name = f"{self.player1.display_name} SCORE", value = score1, inline = False)
-        embed.add_field(name = f"{self.player2.display_name} SCORE", value = score2, inline = False)
+        embed.add_field(name = f"{self.player1.display_name} SCORE", value = score1_rounded, inline = False)
+        embed.add_field(name = f"{self.player2.display_name} SCORE", value = score2_rounded, inline = False)
         embed.add_field(name = f"{self.player1.display_name} Expression", 
                         value = f"```{''.join(list(map(str, self.cards[player1])))}```", 
                         inline = False)
@@ -206,7 +205,6 @@ class PlayerChoiceView(discord.ui.View):
         self.game : Game = game
         game.choice_nr = 0
         self.timeout = None
-        # self.
 
         self.add_item(PlayerChoiceButton(game.player1, game))
         self.add_item(PlayerChoiceButton(game.player2, game))
