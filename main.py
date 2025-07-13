@@ -25,15 +25,18 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
-async def main():
-    async with bot:
-        # 1) załaduj cog z /room
-        await bot.load_extension("rooms")
-        # 2) zsynchronizuj wszystkie komendy (slash + grupa room)
+@bot.event
+async def on_ready():
+    logger.info(f"Bot działa jako {bot.user}")
+    try:
         synced = await bot.tree.sync()
         logger.info(f"Slash commands zsynchronizowane! ({len(synced)})")
-        # 3) uruchom bota
+    except Exception as e:
+        logger.error(f"Wystąpił błąd w synchronizacji: {e}")
+
+async def main():
+    async with bot:
+        await bot.load_extension("rooms")
         await bot.start(os.getenv("TOKEN"))
 
-if __name__ == "__main__":
-    asyncio.run(main())
+asyncio.run(main())
