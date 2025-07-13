@@ -21,27 +21,22 @@ handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(me
 logger.addHandler(handler)
 ####
 
-
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="/", intents=intents)
 
 @bot.event
 async def on_ready():
-    print(f"Bot działa jako {bot.user}")
+    logger.info(f"Bot działa jako {bot.user}")
     try:
         synced = await bot.tree.sync()
-        print("Slash commends zsynchronizowane!", len(synced))
+        logger.info(f"Slash commands zsynchronizowane! ({len(synced)})")
     except Exception as e:
-        print("Wystąpił błąd w synchronizacji:", e)
-
+        logger.error(f"Wystąpił błąd w synchronizacji: {e}")
 
 async def main():
     async with bot:
-        
         await bot.load_extension("rooms")
         await bot.start(os.getenv("TOKEN"))
-
-
 
 asyncio.run(main())
