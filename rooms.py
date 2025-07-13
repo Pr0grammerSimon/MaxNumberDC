@@ -1,4 +1,5 @@
 import os
+import time
 import discord
 from discord.ext import commands
 import json
@@ -110,7 +111,17 @@ class RoomsCog(commands.Cog):
 
     @room.command(name="list", description="List the current rooms")
     async def list_rooms(self, interaction: discord.Interaction):
-        await interaction.response.defer()
+        start = time.monotonic()
+        try:
+            await interaction.response.defer()
+            elapsed = (time.monotonic() - start) * 1000
+            print(f"Defer succeeded in {elapsed:.0f}ms")
+        except discord.NotFound:
+            elapsed = (time.monotonic() - start) * 1000
+            print(f"Defer failed in {elapsed:.0f}ms")
+            print("❌ Defer failed — interaction is already gone.")
+            return
+
 
         if len(self.rooms) == 0:
             await interaction.followup.send('There are no rooms!')
