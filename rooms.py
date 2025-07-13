@@ -28,13 +28,34 @@ class RoomsCog(commands.Cog):
 
     room = discord.app_commands.Group(name="room", description="Room commands")
 
+    async def safe_defer(self, interaction: discord.Interaction):
+        try:
+            if not interaction.response.is_done():
+                await interaction.response.defer()
+        except discord.NotFound:
+            # Interaction no longer valid
+            pass
+        except discord.InteractionResponded:
+            # Already responded, ignore
+            pass
+
+    async def safe_followup_send(self, interaction: discord.Interaction, *args, **kwargs):
+        try:
+            await interaction.followup.send(*args, **kwargs)
+        except discord.NotFound:
+            # Interaction no longer valid
+            pass
+        except discord.HTTPException as e:
+            # Other HTTP issues
+            print(f"Failed to send followup message: {e}")
+
     @room.command(name="create", description="Create a room with some name")
     @discord.app_commands.describe(room_name="The name of the room to create")
     async def create_room(self, interaction: discord.Interaction, room_name : str):
-        await interaction.response.defer()
+        await self.safe_defer(interaction)
 
         if any(map(lambda x: x["name"] == room_name, self.rooms)):
-            await interaction.followup.send(f"Room with name `{room_name}` already exists!")
+            await self.safe_followup_send(interaction, f"Room with name `{room_name}` already exists!")
             return
 
         self.rooms.append({
@@ -43,57 +64,53 @@ class RoomsCog(commands.Cog):
             "channel1": interaction.channel_id
         })
 
-        
         self.update_rooms_file()
-        await interaction.followup.send(f"Room with name `{room_name}` created!")
-
-
+        await self.safe_followup_send(interaction, f"Room with name `{room_name}` created!")
 
     @room.command(name="delete", description="Delete a room with some name")
     @discord.app_commands.describe(room_name="The name of the room to delete")
     async def delete_room(self, interaction: discord.Interaction, room_name : str):
-        await interaction.response.defer()
+        await self.safe_defer(interaction)
 
         deleted_room = None
         for room in self.rooms:
             if room["name"] == room_name:
                 if room["created_by"] != interaction.user.id:
-                    await interaction.followup.send(f"Room with name `{room_name}` isn't yours!")
+                    await self.safe_followup_send(interaction, f"Room with name `{room_name}` isn't yours!")
                     return
                 deleted_room = room
                 break
 
         if deleted_room is None:
-            await interaction.followup.send(f"Room with name `{room_name}` doesn't exist!")
+            await self.safe_followup_send(interaction, f"Room with name `{room_name}` doesn't exist!")
             return
         
         self.rooms.remove(deleted_room)
 
         self.update_rooms_file()
-        await interaction.followup.send(f"Room with name `{room_name}` deleted!")
-
+        await self.safe_followup_send(interaction, f"Room with name `{room_name}` deleted!")
 
     @room.command(name="join", description="Join a room with some name")
     @discord.app_commands.describe(room_name="The name of the room to join to")
     async def join_room(self, interaction: discord.Interaction, room_name: str):
-        await interaction.response.defer()
+        await self.safe_defer(interaction)
         
         matches = list(map(lambda x: x["name"] == room_name, self.rooms))
         if any(matches):
             index = matches.index(True)
 
             if self.rooms[index]["created_by"] == interaction.user.id: 
-                await interaction.followup.send(f"You can't join to your own room!")
+                await self.safe_followup_send(interaction, f"You can't join to your own room!")
                 return
             
             first_channel = self.bot.get_channel(self.rooms[index]["channel1"])
 
-            if first_channel == None:
-                await interaction.followup.send(f"Couldn't join to room with name `{room_name}`")
+            if first_channel is None:
+                await self.safe_followup_send(interaction, f"Couldn't join to room with name `{room_name}`")
                 return
             
 
-            await interaction.followup.send(f"Joined to room with name `{room_name}` !")
+            await self.safe_followup_send(interaction, f"Joined to room with name `{room_name}` !")
 
             game =  Game(
                 player1=self.rooms[index]["created_by"], 
@@ -106,25 +123,23 @@ class RoomsCog(commands.Cog):
             self.update_rooms_file()
             await game.start()
         else:
-            await interaction.followup.send(f"No room with name `{room_name}`")
-
+            await self.safe_followup_send(interaction, f"No room with name `{room_name}`")
 
     @room.command(name="list", description="List the current rooms")
     async def list_rooms(self, interaction: discord.Interaction):
         start = time.monotonic()
         try:
-            await interaction.response.defer()
+            await self.safe_defer(interaction)
             elapsed = (time.monotonic() - start) * 1000
             print(f"Defer succeeded in {elapsed:.0f}ms")
-        except discord.NotFound:
+        except Exception as e:
             elapsed = (time.monotonic() - start) * 1000
             print(f"Defer failed in {elapsed:.0f}ms")
-            print("❌ Defer failed — interaction is already gone.")
+            print(f"❌ Defer failed — {e}")
             return
 
-
         if len(self.rooms) == 0:
-            await interaction.followup.send('There are no rooms!')
+            await self.safe_followup_send(interaction, 'There are no rooms!')
             return
 
         embed = discord.Embed(title = "The list of rooms", 
@@ -133,7 +148,7 @@ class RoomsCog(commands.Cog):
                                       list(enumerate(self.rooms))))
                               , colour= discord.Color.blue())
 
-        await interaction.followup.send(embed=embed)
+        await self.safe_followup_send(interaction, embed=embed)
 
 
 async def setup(bot):

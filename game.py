@@ -45,136 +45,153 @@ class Game:
             self.player2 = guild2.get_member(self.player2_id) or await guild2.fetch_member(self.player2_id)
 
             if not self.player1 or not self.player2:
+                logging.warning(f"One or both players not found: {self.player1}, {self.player2}")
                 return False
             return True
         except discord.NotFound as e:
             logging.error(f"Player not found: {e}")
             return False
         except Exception as e:
-            logging.error(f"Unexpected error in setup_players: {e}")
+            logging.error(f"Unexpected error in setup_players: {e}", exc_info=True)
             return False
 
     
     async def start(self):
-        if not await self.setup_players():
+        try:
+            if not await self.setup_players():
+                if self.channel1.id == self.channel2.id:
+                    await self.channel1.send("Couldn't find the player")
+                else:
+                    await self.channel2.send("Couldn't find the player")
+                    await self.channel1.send("Couldn't find the player")
+                return
+
             if self.channel1.id == self.channel2.id:
-                await self.channel1.send("Couldn't find the player")
-            else :
-                await self.channel2.send("Couldn't find the player")
-                await self.channel1.send("Couldn't find the player")
+                cards_embed = await self.cards_embed()
+                view = PlayerChoiceView(self)
+                self.messages = [await self.channel1.send(embed=cards_embed, view=view)]
+            else:
+                cards_embed1 = await self.cards_embed()
+
+                view1 = PlayerChoiceView(self)
+                view2 = PlayerChoiceView(self)
+
+                self.messages = [await self.channel1.send(embed=cards_embed1, view=view1), 
+                                 await self.channel2.send(embed=cards_embed1, view=view2)]
+        except Exception as e:
+            logging.error(f"Error in start: {e}", exc_info=True)
 
 
-        if self.channel1.id == self.channel2.id:
-            cards_embed = await self.cards_embed()
-            view = PlayerChoiceView(self)
-            
-            self.messages = [await self.channel1.send(embed=cards_embed, view=view)]
-
-        else:
-            cards_embed1 = await self.cards_embed()
-
-            view1 = PlayerChoiceView(self)
-            view2 = PlayerChoiceView(self)
-
-            self.messages = [await self.channel1.send(embed=cards_embed1, view=view1), 
-                             await self.channel2.send(embed=cards_embed1, view=view2)]
-
-
-    
     async def cards_embed(self):
-        player1 = self.player1
-        player2 = self.player2
+        try:
+            player1 = self.player1
+            player2 = self.player2
 
+            embed = discord.Embed(title=f"MAX NUMBER",
+                                  description=f"<@{player1.id}> VS <@{player2.id}>",
+                                  color=discord.Color.blue())
 
-        embed = discord.Embed(title=f"MAX NUMBER",
-                              description=f"<@{player1.id}> VS <@{player2.id}>",
-                              color=discord.Color.blue())
+            embed.add_field(name=f"Player {player1.display_name} cards", 
+                            value = f"```{''.join(list(map(str, self.cards[player1.id])))}```",
+                            inline=False)
+            
+            embed.add_field(name=f"Available cards", 
+                            value = f"```{', '.join(list(map(str, self.available)))}```", 
+                            inline=False)
+            
+            embed.add_field(name=f"Player {player2.display_name} cards", 
+                            value = f"```{''.join(list(map(str, self.cards[player2.id])))}```", 
+                            inline=False)
+            
+            embed.add_field(name="What to do?", value=f"{self.choice_texts[self.choice_nr]}", inline=False)
 
-        embed.add_field(name=f"Player {player1.display_name} cards", 
-                        value = f"```{''.join(list(map(str, self.cards[player1.id])))}```",
-                        inline=False)
-        
-        embed.add_field(name=f"Available cards", 
-                        value = f"```{', '.join(list(map(str, self.available)))}```", 
-                        inline=False)
-        
-        embed.add_field(name=f"Player {player2.display_name} cards", 
-                        value = f"```{''.join(list(map(str, self.cards[player2.id])))}```", 
-                        inline=False)
-        
-        embed.add_field(name="What to do?", value=f"{self.choice_texts[self.choice_nr]}", inline=False)
+            embed.set_footer(text=f"{player1.display_name if self.current_turn == self.player1_id else player2.display_name} turn!")
 
-        embed.set_footer(text=f"{player1.display_name if self.current_turn == self.player1_id else player2.display_name} turn!")
+            return embed
+        except Exception as e:
+            logging.error(f"Error creating embed: {e}", exc_info=True)
+            # Return a minimal embed so the bot won't crash completely
+            return discord.Embed(title="Error", description="Failed to create game embed.")
 
-        return embed
 
     async def can_press(self, interaction : discord.Interaction):
-        await interaction.response.defer()
-        user_id = interaction.user.id
+        try:
+            await interaction.response.defer()
+            user_id = interaction.user.id
 
-        if user_id != self.player1_id and user_id != self.player2_id:
-            await interaction.followup.send("This is not your game!", ephemeral=True)
-            return False
-        
-        if user_id != self.current_turn:
-            await interaction.followup.send("It is not your turn!", ephemeral=True)
-            return False
-
-        return True
-    
-    async def valid_move(self):
-        card = self.card_choice
-        pos = self.pos_choice
-        player = self.player_choice
-
-        new_expr = "".join([str(element) for element in self.cards[player]])
-        new_expr = new_expr[:pos] + str(card) + new_expr[pos:]
-
-        for idx in range(len(new_expr) - 1):
-            if new_expr[idx] in OPERATION_CARDS and new_expr[idx + 1] in OPERATION_CARDS:
+            if user_id != self.player1_id and user_id != self.player2_id:
+                await interaction.followup.send("This is not your game!", ephemeral=True)
+                return False
+            
+            if user_id != self.current_turn:
+                await interaction.followup.send("It is not your turn!", ephemeral=True)
                 return False
 
-        if new_expr[0] == "/" or new_expr[0] == "*":
+            return True
+        except Exception as e:
+            logging.error(f"Error in can_press: {e}", exc_info=True)
             return False
-        
-        if new_expr[-1] in OPERATION_CARDS:
-            return False
+    
+    async def valid_move(self):
+        try:
+            card = self.card_choice
+            pos = self.pos_choice
+            player = self.player_choice
 
-        return True
+            new_expr = "".join([str(element) for element in self.cards[player]])
+            new_expr = new_expr[:pos] + str(card) + new_expr[pos:]
+
+            for idx in range(len(new_expr) - 1):
+                if new_expr[idx] in OPERATION_CARDS and new_expr[idx + 1] in OPERATION_CARDS:
+                    return False
+
+            if new_expr[0] == "/" or new_expr[0] == "*":
+                return False
+            
+            if new_expr[-1] in OPERATION_CARDS:
+                return False
+
+            return True
+        except Exception as e:
+            logging.error(f"Error validating move: {e}", exc_info=True)
+            return False
     
 
     async def end_embed(self):
-        player1 = self.player1_id
-        player2 = self.player2_id
-        
-        score1 = eval("".join([str(element) for element in self.cards[player1]]))
-        score2 = eval("".join([str(element) for element in self.cards[player2]]))
+        try:
+            player1 = self.player1_id
+            player2 = self.player2_id
+            
+            score1 = eval("".join([str(element) for element in self.cards[player1]]))
+            score2 = eval("".join([str(element) for element in self.cards[player2]]))
 
-        score1_rounded = f"{score1:.3f}"
-        score2_rounded = f"{score2:.3f}"
+            score1_rounded = f"{score1:.3f}"
+            score2_rounded = f"{score2:.3f}"
 
-        result = "DRAW!"
+            result = "DRAW!"
 
-        if score1 > score2:
-            result = f"{self.player1.display_name} WON!"
-        elif score2 > score1:
-            result = f"{self.player2.display_name} WON!"
+            if score1 > score2:
+                result = f"{self.player1.display_name} WON!"
+            elif score2 > score1:
+                result = f"{self.player2.display_name} WON!"
 
-        embed = discord.Embed(title=f"MAX NUMBER",
-                            description=result,
-                            color=discord.Color.blue())
-        
-        embed.add_field(name = f"{self.player1.display_name} SCORE", value = score1_rounded, inline = False)
-        embed.add_field(name = f"{self.player2.display_name} SCORE", value = score2_rounded, inline = False)
-        embed.add_field(name = f"{self.player1.display_name} Expression", 
-                        value = f"```{''.join(list(map(str, self.cards[player1])))}```", 
-                        inline = False)
-        embed.add_field(name = f"{self.player2.display_name} Expression", 
-                        value = f"```{''.join(list(map(str, self.cards[player2])))}```", 
-                        inline = False)
-        
-        return embed
-
+            embed = discord.Embed(title=f"MAX NUMBER",
+                                description=result,
+                                color=discord.Color.blue())
+            
+            embed.add_field(name = f"{self.player1.display_name} SCORE", value = score1_rounded, inline = False)
+            embed.add_field(name = f"{self.player2.display_name} SCORE", value = score2_rounded, inline = False)
+            embed.add_field(name = f"{self.player1.display_name} Expression", 
+                            value = f"```{''.join(list(map(str, self.cards[player1])))}```", 
+                            inline = False)
+            embed.add_field(name = f"{self.player2.display_name} Expression", 
+                            value = f"```{''.join(list(map(str, self.cards[player2])))}```", 
+                            inline = False)
+            
+            return embed
+        except Exception as e:
+            logging.error(f"Error creating end embed: {e}", exc_info=True)
+            return discord.Embed(title="Error", description="Failed to create end game embed.")
 
 
 class BackButton(discord.ui.Button):
@@ -187,18 +204,21 @@ class BackButton(discord.ui.Button):
         self.game = game
     
     async def callback(self, interaction : discord.Interaction):
-        await interaction.response.defer()
+        try:
+            await interaction.response.defer()
 
-        if not await self.game.can_press(interaction): return
-        if self.game.choice_nr == 0: return
+            if not await self.game.can_press(interaction): return
+            if self.game.choice_nr == 0: return
 
-        self.game.choice_nr -= 1
-        if self.game.choice_nr == 0:
-            await interaction.message.edit(view = PlayerChoiceView(self.game), embed = await self.game.cards_embed())
-        elif self.game.choice_nr == 1:
-            await interaction.message.edit(view = CardChoiceView(self.game), embed = await self.game.cards_embed())
+            self.game.choice_nr -= 1
+            if self.game.choice_nr == 0:
+                await interaction.message.edit(view = PlayerChoiceView(self.game), embed = await self.game.cards_embed())
+            elif self.game.choice_nr == 1:
+                await interaction.message.edit(view = CardChoiceView(self.game), embed = await self.game.cards_embed())
 
-        await interaction.followup.send("Returned to last choice", ephemeral=True)
+            await interaction.followup.send("Returned to last choice", ephemeral=True)
+        except Exception as e:
+            logging.error(f"Error in BackButton callback: {e}", exc_info=True)
 
 
 class PlayerChoiceView(discord.ui.View):
@@ -211,6 +231,7 @@ class PlayerChoiceView(discord.ui.View):
 
         self.add_item(PlayerChoiceButton(game.player1, game))
         self.add_item(PlayerChoiceButton(game.player2, game))
+
 
 class PlayerChoiceButton(discord.ui.Button):
 
@@ -225,14 +246,16 @@ class PlayerChoiceButton(discord.ui.Button):
         self.game = game
     
     async def callback(self, interaction : discord.Interaction):
-        await interaction.response.defer()
+        try:
+            await interaction.response.defer()
 
-        if not await self.game.can_press(interaction): return
+            if not await self.game.can_press(interaction): return
 
-        self.game.player_choice = self.player.id
-    
-        await interaction.message.edit(view = CardChoiceView(self.game), embed = await self.game.cards_embed())
-
+            self.game.player_choice = self.player.id
+        
+            await interaction.message.edit(view = CardChoiceView(self.game), embed = await self.game.cards_embed())
+        except Exception as e:
+            logging.error(f"Error in PlayerChoiceButton callback: {e}", exc_info=True)
 
 
 class CardChoiceView(discord.ui.View):
@@ -243,94 +266,89 @@ class CardChoiceView(discord.ui.View):
         game.choice_nr = 1
         self.timeout = None
         
-        for card in self.game.available:
+        for card in game.available:
             self.add_item(CardChoiceButton(card, game))
-        
+
         self.add_item(BackButton(game))
 
 
 class CardChoiceButton(discord.ui.Button):
-    def __init__(self, card_value : int | str, game : Game):
+
+    def __init__(self, card, game):
         super().__init__(
-            label = str(card_value)
+            label = str(card),
+            style = discord.ButtonStyle.secondary,
         )
+        self.card = card
         self.game = game
-        self.value = card_value
     
     async def callback(self, interaction : discord.Interaction):
-        if not await self.game.can_press(interaction): return
+        try:
+            await interaction.response.defer()
+            if not await self.game.can_press(interaction): return
 
-        self.game.card_choice = self.value
+            self.game.card_choice = self.card
+            await interaction.message.edit(view = PositionChoiceView(self.game), embed = await self.game.cards_embed())
+        except Exception as e:
+            logging.error(f"Error in CardChoiceButton callback: {e}", exc_info=True)
 
-        await interaction.message.edit(view=PosChoiceView(self.game), embed= await self.game.cards_embed())
-        await interaction.response.defer()
 
+class PositionChoiceView(discord.ui.View):
 
-
-class PosChoiceView(discord.ui.View):
-    
     def __init__(self, game : Game):
         super().__init__()
         self.game = game
+        game.choice_nr = 2
         self.timeout = None
-        
-        for idx in range(len(game.cards[game.player_choice]) + 1):
-            self.add_item(PosChoiceButton(idx, game))
+
+        # number of positions = length of chosen player's cards + 1
+        for i in range(len(game.cards[game.player_choice]) + 1):
+            self.add_item(PositionChoiceButton(i, game))
         
         self.add_item(BackButton(game))
 
 
+class PositionChoiceButton(discord.ui.Button):
 
-class PosChoiceButton(discord.ui.Button):
-    def __init__(self, idx : int | str, game : Game):
+    def __init__(self, pos : int, game : Game):
         super().__init__(
-            label = str(idx)
+            label = str(pos),
+            style = discord.ButtonStyle.success,
         )
-        game.choice_nr = 2
+        self.pos = pos
         self.game = game
-        self.idx = idx
     
     async def callback(self, interaction : discord.Interaction):
-        await interaction.response.defer()
-        if not await self.game.can_press(interaction): return
+        try:
+            await interaction.response.defer()
+            if not await self.game.can_press(interaction): return
 
-        self.game.pos_choice = self.idx
+            self.game.pos_choice = self.pos
 
-        if not await self.game.valid_move():
-            await interaction.followup.send("Invalid Move", ephemeral=True)
-            return
-        
+            if not await self.game.valid_move():
+                await interaction.followup.send("Invalid move! Two operations in a row or invalid position.", ephemeral=True)
+                return
 
-        card = self.game.card_choice
-        pos = self.game.pos_choice
-        player = self.game.player_choice
-        self.game.current_turn = self.game.player2_id if self.game.current_turn == self.game.player1_id else self.game.player1_id
-        self.game.cards[player] = self.game.cards[player][:pos] + [card] + self.game.cards[player][pos:]
-        self.game.available.remove(card)
-        self.game.choice_nr = 0
-
-        await interaction.followup.send(f"You made the move", ephemeral=True)
-        
-      
-        if len(self.game.available) == 0:
+            self.game.cards[self.game.player_choice].insert(self.pos, self.game.card_choice)
+            self.game.available.remove(self.game.card_choice)
             
-            if self.game.channel1.id == self.game.channel2.id:
-                await self.game.channel1.send(f"We know the results of the game!!! <@{self.game.player1_id}> <@{self.game.player2_id}>")
-            else:
-                await self.game.channel1.send(f"We know the results of the game!!! <@{self.game.player1_id}>")
-                await self.game.channel2.send(f"We know the results of the game!!! <@{self.game.player2_id}>")
+            # Reset choices
+            self.game.player_choice = None
+            self.game.card_choice = None
+            self.game.pos_choice = None
 
-            for idx in range(len(self.game.messages)):
-                embed = await self.game.end_embed()
-                await self.game.messages[idx].edit(view = None, embed = embed)
-        else:
+            # Change turn
             if self.game.current_turn == self.game.player1_id:
-                await self.game.channel1.send(f"<@{self.game.player1_id}> your turn in game with {self.game.player2.display_name}!")
+                self.game.current_turn = self.game.player2_id
             else:
-                await self.game.channel2.send(f"<@{self.game.player2_id}> your turn in game with {self.game.player1.display_name}!")
+                self.game.current_turn = self.game.player1_id
 
-            for idx in range(len(self.game.messages)):
-                cards_embed = await self.game.cards_embed()
-                view = PlayerChoiceView(self.game)
-                await self.game.messages[idx].delete(delay=1)
-                self.game.messages[idx] = await self.game.messages[idx].channel.send(view = view, embed = cards_embed)
+            # Reset to first choice
+            self.game.choice_nr = 0
+
+            if len(self.game.available) == 0:
+                await interaction.message.edit(view=None, embed=await self.game.end_embed())
+            else:
+                await interaction.message.edit(view=PlayerChoiceView(self.game), embed=await self.game.cards_embed())
+        except Exception as e:
+            logging.error(f"Error in PositionChoiceButton callback: {e}", exc_info=True)

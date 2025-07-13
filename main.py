@@ -5,8 +5,6 @@ import logging
 import dotenv
 import os
 
-from game import PosChoiceView, CardChoiceView, PlayerChoiceView
-import game
 
 ### .ENV TOKEN ###
 dotenv.load_dotenv('.env')
