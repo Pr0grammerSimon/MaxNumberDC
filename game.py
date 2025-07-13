@@ -109,14 +109,15 @@ class Game:
         return embed
 
     async def can_press(self, interaction : discord.Interaction):
+        await interaction.response.defer()
         user_id = interaction.user.id
 
         if user_id != self.player1_id and user_id != self.player2_id:
-            await interaction.response.send_message("This is not your game!", ephemeral=True)
+            await interaction.followup.send("This is not your game!", ephemeral=True)
             return False
         
         if user_id != self.current_turn:
-            await interaction.response.send_message("It is not your turn!", ephemeral=True)
+            await interaction.followup.send("It is not your turn!", ephemeral=True)
             return False
 
         return True
@@ -186,6 +187,8 @@ class BackButton(discord.ui.Button):
         self.game = game
     
     async def callback(self, interaction : discord.Interaction):
+        await interaction.response.defer()
+
         if not await self.game.can_press(interaction): return
         if self.game.choice_nr == 0: return
 
@@ -195,7 +198,7 @@ class BackButton(discord.ui.Button):
         elif self.game.choice_nr == 1:
             await interaction.message.edit(view = CardChoiceView(self.game), embed = await self.game.cards_embed())
 
-        await interaction.response.send_message("Returned to last choice", ephemeral=True)
+        await interaction.followup.send("Returned to last choice", ephemeral=True)
 
 
 class PlayerChoiceView(discord.ui.View):
@@ -222,12 +225,13 @@ class PlayerChoiceButton(discord.ui.Button):
         self.game = game
     
     async def callback(self, interaction : discord.Interaction):
+        await interaction.response.defer()
+
         if not await self.game.can_press(interaction): return
 
         self.game.player_choice = self.player.id
     
         await interaction.message.edit(view = CardChoiceView(self.game), embed = await self.game.cards_embed())
-        await interaction.response.defer()
 
 
 
@@ -287,12 +291,13 @@ class PosChoiceButton(discord.ui.Button):
         self.idx = idx
     
     async def callback(self, interaction : discord.Interaction):
+        await interaction.response.defer()
         if not await self.game.can_press(interaction): return
 
         self.game.pos_choice = self.idx
 
         if not await self.game.valid_move():
-            await interaction.response.send_message("Invalid Move", ephemeral=True)
+            await interaction.followup.send("Invalid Move", ephemeral=True)
             return
         
 
@@ -304,7 +309,7 @@ class PosChoiceButton(discord.ui.Button):
         self.game.available.remove(card)
         self.game.choice_nr = 0
 
-        await interaction.response.send_message(f"You made the move", ephemeral=True)
+        await interaction.followup.send(f"You made the move", ephemeral=True)
         
       
         if len(self.game.available) == 0:

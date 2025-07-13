@@ -30,9 +30,10 @@ class RoomsCog(commands.Cog):
     @room.command(name="create", description="Create a room with some name")
     @discord.app_commands.describe(room_name="The name of the room to create")
     async def create_room(self, interaction: discord.Interaction, room_name : str):
+        await interaction.response.defer()
 
         if any(map(lambda x: x["name"] == room_name, self.rooms)):
-            await interaction.response.send_message(f"Room with name `{room_name}` already exists!")
+            await interaction.followup.send(f"Room with name `{room_name}` already exists!")
             return
 
         self.rooms.append({
@@ -43,54 +44,55 @@ class RoomsCog(commands.Cog):
 
         
         self.update_rooms_file()
-        await interaction.response.send_message(f"Room with name `{room_name}` created!")
+        await interaction.followup.send(f"Room with name `{room_name}` created!")
 
 
 
     @room.command(name="delete", description="Delete a room with some name")
     @discord.app_commands.describe(room_name="The name of the room to delete")
     async def delete_room(self, interaction: discord.Interaction, room_name : str):
+        await interaction.response.defer()
 
         deleted_room = None
         for room in self.rooms:
             if room["name"] == room_name:
                 if room["created_by"] != interaction.user.id:
-                    await interaction.response.send_message(f"Room with name `{room_name}` isn't yours!")
+                    await interaction.followup.send(f"Room with name `{room_name}` isn't yours!")
                     return
                 deleted_room = room
                 break
 
         if deleted_room is None:
-            await interaction.response.send_message(f"Room with name `{room_name}` doesn't exist!")
+            await interaction.followup.send(f"Room with name `{room_name}` doesn't exist!")
             return
         
         self.rooms.remove(deleted_room)
 
         self.update_rooms_file()
-        await interaction.response.send_message(f"Room with name `{room_name}` deleted!")
+        await interaction.followup.send(f"Room with name `{room_name}` deleted!")
 
 
     @room.command(name="join", description="Join a room with some name")
     @discord.app_commands.describe(room_name="The name of the room to join to")
     async def join_room(self, interaction: discord.Interaction, room_name: str):
-
+        await interaction.response.defer()
         
         matches = list(map(lambda x: x["name"] == room_name, self.rooms))
         if any(matches):
             index = matches.index(True)
 
             if self.rooms[index]["created_by"] == interaction.user.id: 
-                await interaction.response.send_message(f"You can't join to your own room!")
+                await interaction.followup.send(f"You can't join to your own room!")
                 return
             
             first_channel = self.bot.get_channel(self.rooms[index]["channel1"])
 
             if first_channel == None:
-                await interaction.response.send_message(f"Couldn't join to room with name `{room_name}`")
+                await interaction.followup.send(f"Couldn't join to room with name `{room_name}`")
                 return
             
 
-            await interaction.response.send_message(f"Joined to room with name `{room_name}` !")
+            await interaction.followup.send(f"Joined to room with name `{room_name}` !")
 
             game =  Game(
                 player1=self.rooms[index]["created_by"], 
@@ -103,15 +105,15 @@ class RoomsCog(commands.Cog):
             self.update_rooms_file()
             await game.start()
         else:
-            await interaction.response.send_message(f"No room with name `{room_name}`")
+            await interaction.followup.send(f"No room with name `{room_name}`")
 
 
     @room.command(name="list", description="List the current rooms")
     async def list_rooms(self, interaction: discord.Interaction):
-        
+        await interaction.response.defer()
 
         if len(self.rooms) == 0:
-            await interaction.response.send_message('There are no rooms!')
+            await interaction.followup.send('There are no rooms!')
             return
 
         embed = discord.Embed(title = "The list of rooms", 
@@ -120,7 +122,7 @@ class RoomsCog(commands.Cog):
                                       list(enumerate(self.rooms))))
                               , colour= discord.Color.blue())
 
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
 
 
 async def setup(bot):
