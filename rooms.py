@@ -18,7 +18,6 @@ class RoomsCog(commands.Cog):
 
         with open(rooms_file_url, "r") as f:
             self.rooms : list = json.load(f)["rooms"]
-        
 
     
     def update_rooms_file(self):
